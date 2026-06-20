@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EV Charging Solutions</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #0f1117; color: #fff; min-height: 100vh; padding: 20px; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .topbar h1 { font-size: 20px; font-weight: 600; }
+    .live-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #aaa; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .panel { background: #1a1d27; border-radius: 14px; padding: 20px; border: 1px solid #2a2d3a; margin-bottom: 20px; }
+    .panel h2 { font-size: 15px; font-weight: 600; color: #aaa; margin-bottom: 16px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; color: #888; }
+    .form-group input, .form-group select {
+      background: #0f1117; border: 1px solid #2a2d3a; border-radius: 8px;
+      padding: 10px 12px; color: #fff; font-size: 14px; outline: none; transition: border 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #22c55e; }
+    .form-group select option { background: #1a1d27; }
+    .form-full { grid-column: 1 / -1; }
+
+    .submit-btn {
+      width: 100%; padding: 12px; background: #16a34a; border: none;
+      border-radius: 10px; color: #fff; font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-top: 14px; transition: background 0.2s;
+    }
+    .submit-btn:hover { background: #15803d; }
+    .err-msg { color: #ef4444; font-size: 12px; margin-top: 8px; display: none; }
+
+    .count-badge { background: #16a34a; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
+
+    .vehicles-list { display: flex; flex-direction: column; gap: 14px; }
+    .empty { text-align: center; color: #555; font-size: 13px; padding: 30px; }
+
+    .vehicle-card { background: #0f1117; border-radius: 12px; padding: 16px; border: 1px solid #2a2d3a; }
+
+    .v-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; gap: 10px; }
+    .v-header-left { display: flex; align-items: flex-start; gap: 12px; }
+    .v-avatar { width: 42px; height: 42px; border-radius: 50%; background: #052e16; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .v-info { display: flex; flex-direction: column; gap: 5px; }
+    .v-name { font-size: 15px; font-weight: 600; color: #fff; }
+    .v-meta { font-size: 11px; color: #555; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .del-btn { background: none; border: none; color: #555; cursor: pointer; font-size: 16px; padding: 4px; flex-shrink: 0; }
+    .del-btn:hover { color: #ef4444; }
+
+    .battery-label { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 6px; }
+
+    /* BATTERY BAR */
+    .battery-outer {
+      background: #2a2d3a; border-radius: 8px; height: 28px;
+      overflow: hidden; position: relative; margin-bottom: 6px;
+    }
+    .battery-fill {
+      height: 100%; border-radius: 8px;
+      transition: width 0.6s ease, background 0.4s;
+      display: flex; align-items: center;
+    }
+    /* lightning bolt stripe animation while charging */
+    @keyframes stripe-move {
+      from { background-position: 0 0; }
+      to   { background-position: 40px 0; }
+    }
+    .battery-fill.charging {
+      background-image: repeating-linear-gradient(
+        -45deg,
+        transparent, transparent 10px,
+        rgba(255,255,255,0.08) 10px, rgba(255,255,255,0.08) 20px
+      );
+      background-size: 40px 40px;
+      animation: stripe-move 0.8s linear infinite;
+    }
+    .battery-pct {
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 12px; font-weight: 700; color: #fff; pointer-events: none;
+    }
+
+    .charge-info-row { display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-bottom: 14px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .stat { background: #1a1d27; border-radius: 10px; padding: 10px; text-align: center; }
+    .stat .s-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+    .stat .s-val { font-size: 17px; font-weight: 700; }
+    .stat .s-unit { font-size: 10px; color: #666; }
+
+    .charge-type-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .ct-badge { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+    .ct-slow  { background: #1e3a5f; color: #60a5fa; }
+    .ct-fast  { background: #2d1c00; color: #f59e0b; }
+    .ct-rapid { background: #2d0707; color: #f87171; }
+    .ct-solar { background: #052e16; color: #4ade80; }
+
+    .status-bar { padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 500; text-align: center; }
+    .s-charging { background: #052e16; color: #22c55e; border: 1px solid #166534; }
+    .s-full     { background: #1e1b4b; color: #818cf8; border: 1px solid #3730a3; }
+    .s-low      { background: #2d0707; color: #ef4444; border: 1px solid #991b1b; }
+    .s-moderate { background: #2d1c00; color: #f59e0b; border: 1px solid #854d0e; }
+
+    .ctrl-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .ctrl-btn {
+      flex: 1; padding: 8px; border: 1px solid #2a2d3a; border-radius: 8px;
+      background: #1a1d27; color: #aaa; font-size: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .ctrl-btn:hover { border-color: #22c55e; color: #22c55e; }
+    .ctrl-btn.active { background: #052e16; border-color: #22c55e; color: #22c55e; font-weight: 600; }
+    .ctrl-btn.stop-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+    @media (max-width: 500px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1><i class="ti ti-bolt" style="margin-right:8px;color:#22c55e"></i>EV Charging Solutions</h1>
+    <div class="live-status"><div class="dot"></div>Live charging</div>
+  </div>
+
+  <div class="panel">
+    <h2><i class="ti ti-car" style="margin-right:8px;color:#22c55e"></i>Add new vehicle</h2>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>Owner name</label>
+        <input type="text" id="v-owner" placeholder="e.g. Jaydeep Dey">
+      </div>
+      <div class="form-group">
+        <label>Vehicle name / model</label>
+        <input type="text" id="v-name" placeholder="e.g. Tata Nexon EV">
+      </div>
+      <div class="form-group">
+        <label>Battery capacity (kWh)</label>
+        <input type="number" id="v-cap" placeholder="e.g. 40" min="5" max="200">
+      </div>
+      <div class="form-group">
+        <label>Current battery level (%)</label>
+        <input type="number" id="v-level" placeholder="0 – 100" min="0" max="100">
+      </div>
+      <div class="form-group">
+        <label>Charging type</label>
+        <select id="v-type">
+          <option value="">-- Select charging type --</option>
+          <option value="slow">Slow (3.3 kW) — overnight</option>
+          <option value="fast">Fast (22 kW) — 1–2 hrs</option>
+          <option value="rapid">Rapid DC (50 kW) — 20–30 min</option>
+          <option value="solar">Solar (5 kW) — eco friendly</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Target charge (%)</label>
+        <input type="number" id="v-target" placeholder="e.g. 80" min="1" max="100">
+      </div>
+    </div>
+    <button class="submit-btn" onclick="addVehicle()">
+      <i class="ti ti-bolt" style="margin-right:8px"></i>Add vehicle & start charging
+    </button>
+    <p class="err-msg" id="err-msg"></p>
+  </div>
+
+  <div class="panel">
+    <h2>
+      <i class="ti ti-list" style="margin-right:8px;color:#22c55e"></i>Vehicle records
+      <span class="count-badge" id="count">0</span>
+    </h2>
+    <div class="vehicles-list" id="vehicle-list">
+      <div class="empty">
+        <i class="ti ti-car" style="font-size:32px;display:block;margin-bottom:8px"></i>
+        No vehicles added yet. Fill the form above.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const vehicles = [];
+    const intervals = {};
+
+    const chargeRates  = { slow: 3.3,  fast: 22,  rapid: 50,  solar: 5  };
+    const chargeLabels = { slow: 'Slow (3.3 kW)', fast: 'Fast (22 kW)', rapid: 'Rapid DC (50 kW)', solar: 'Solar (5 kW)' };
+    const badgeClass   = { slow: 'ct-slow', fast: 'ct-fast', rapid: 'ct-rapid', solar: 'ct-solar' };
+    const chargeIcons  = { slow: 'ti-plug', fast: 'ti-bolt',  rapid: 'ti-rocket', solar: 'ti-sun'  };
+
+    /* Each second of real time = 1 minute of charging simulation */
+    const SIM_SPEED = 1;   /* minutes per second */
+
+    function getBatteryColor(pct) {
+      if (pct >= 80) return '#22c55e';
+      if (pct >= 40) return '#f59e0b';
+      return '#ef4444';
+    }
+
+    function timeStr(mins) {
+      if (mins <= 0) return '0 min';
+      const h = Math.floor(mins / 60), m = Math.round(mins % 60);
+      return h > 0 ? `${h}h ${m}m` : `${m} min`;
+    }
+
+    function addVehicle() {
+      const owner  = document.getElementById('v-owner').value.trim();
+      const name   = document.getElementById('v-name').value.trim();
+      const cap    = parseFloat(document.getElementById('v-cap').value);
+      const level  = parseFloat(document.getElementById('v-level').value);
+      const type   = document.getElementById('v-type').value;
+      const target = parseFloat(document.getElementById('v-target').value);
+      const err    = document.getElementById('err-msg');
+
+      if (!owner)  { err.textContent = 'Please enter owner name.';    err.style.display='block'; return; }
+      if (!name)   { err.textContent = 'Please enter vehicle name.';  err.style.display='block'; return; }
+      if (isNaN(cap)||isNaN(level)||isNaN(target)) { err.textContent='Please fill all fields.'; err.style.display='block'; return; }
+      if (!type)   { err.textContent = 'Please select charging type.';err.style.display='block'; return; }
+      if (target <= level) { err.textContent='Target must be higher than current level.'; err.style.display='block'; return; }
+      err.style.display = 'none';
+
+      const now  = new Date();
+      const id   = Date.now();
+      vehicles.unshift({
+        id, owner, name, cap, type, target,
+        currentLevel: level,
+        startLevel:   level,
+        isCharging: false,
+        isComplete: false,
+        time: now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }),
+        date: now.toLocaleDateString([],  { day:'2-digit', month:'short', year:'numeric' })
+      });
+
+      ['v-owner','v-name','v-cap','v-level','v-target'].forEach(i => document.getElementById(i).value='');
+      document.getElementById('v-type').value = '';
+      renderAll();
+    }
+
+    function startCharging(id) {
+      const v = vehicles.find(v => v.id === id);
+      if (!v || v.isComplete) return;
+      v.isCharging = true;
+
+      /* kWh per real second = rate(kW) * SIM_SPEED minutes / 60 */
+      const kWhPerSec = chargeRates[v.type] * SIM_SPEED / 60;
+      const pctPerSec = (kWhPerSec / v.cap) * 100;
+
+      intervals[id] = setInterval(() => {
+        v.currentLevel = Math.min(v.target, v.currentLevel + pctPerSec);
+        if (v.currentLevel >= v.target) {
+          v.currentLevel = v.target;
+          v.isCharging   = false;
+          v.isComplete   = true;
+          clearInterval(intervals[id]);
+          delete intervals[id];
+        }
+        updateCard(v);
+      }, 1000);
+
+      updateCard(v);
+    }
+
+    function stopCharging(id) {
+      const v = vehicles.find(v => v.id === id);
+      if (!v) return;
+      v.isCharging = false;
+      clearInterval(intervals[id]);
+      delete intervals[id];
+      updateCard(v);
+    }
+
+    function removeVehicle(id) {
+      clearInterval(intervals[id]);
+      delete intervals[id];
+      const idx = vehicles.findIndex(v => v.id === id);
+      if (idx > -1) vehicles.splice(idx, 1);
+      renderAll();
+    }
+
+    function updateCard(v) {
+      const pct   = Math.round(v.currentLevel);
+      const color = getBatteryColor(pct);
+      const kWhLeft = ((v.target - v.currentLevel) / 100 * v.cap);
+      const minsLeft = v.isComplete ? 0 : Math.ceil(kWhLeft / chargeRates[v.type] * 60);
+      const rangeKm = Math.round(pct * v.cap * 6);
+
+      const fill = document.getElementById(`fill-${v.id}`);
+      const pctEl= document.getElementById(`pct-${v.id}`);
+      const lbl  = document.getElementById(`lbl-${v.id}`);
+      const info = document.getElementById(`info-${v.id}`);
+      const tStr = document.getElementById(`time-${v.id}`);
+      const kEl  = document.getElementById(`kwh-${v.id}`);
+      const rEl  = document.getElementById(`range-${v.id}`);
+      const stat = document.getElementById(`stat-${v.id}`);
+      const sBtn = document.getElementById(`sbtn-${v.id}`);
+      const stBtn= document.getElementById(`stbtn-${v.id}`);
+
+      if (!fill) return;
+
+      fill.style.width      = pct + '%';
+      fill.style.background = color;
+      fill.classList.toggle('charging', v.isCharging);
+      pctEl.textContent = pct + '%';
+      lbl.style.color   = color;
+      lbl.textContent   = pct + '% → Target: ' + v.target + '%';
+      info.textContent  = v.isComplete
+        ? 'Charging complete!'
+        : (v.isCharging ? `Charging… ${timeStr(minsLeft)} remaining` : 'Paused');
+      tStr.textContent = v.isComplete ? '0 min' : timeStr(minsLeft);
+      kEl.textContent  = kWhLeft > 0 ? kWhLeft.toFixed(1) : '0';
+      rEl.textContent  = rangeKm;
+
+      if (v.isComplete) {
+        stat.className   = 'status-bar s-full';
+        stat.innerHTML   = '<i class="ti ti-circle-check" style="margin-right:6px"></i>Charging complete — target reached!';
+        sBtn.style.display  = 'none';
+        stBtn.style.display = 'none';
+      } else if (v.isCharging) {
+        stat.className   = 'status-bar s-charging';
+        stat.innerHTML   = '<i class="ti ti-bolt" style="margin-right:6px"></i>Charging in progress…';
+        sBtn.style.display  = 'none';
+        stBtn.style.display = '';
+      } else {
+        if (pct < 20) {
+          stat.className = 'status-bar s-low';
+          stat.innerHTML = '<i class="ti ti-alert-circle" style="margin-right:6px"></i>Critical — charge immediately';
+        } else {
+          stat.className = 'status-bar s-moderate';
+          stat.innerHTML = '<i class="ti ti-clock" style="margin-right:6px"></i>Paused — press Start to charge';
+        }
+        sBtn.style.display  = '';
+        stBtn.style.display = 'none';
+      }
+    }
+
+    function renderAll() {
+      document.getElementById('count').textContent = vehicles.length;
+      const list = document.getElementById('vehicle-list');
+      if (vehicles.length === 0) {
+        list.innerHTML = `<div class="empty">
+          <i class="ti ti-car" style="font-size:32px;display:block;margin-bottom:8px"></i>
+          No vehicles added yet. Fill the form above.
+        </div>`;
+        return;
+      }
+
+      list.innerHTML = vehicles.map(v => {
+        const pct    = Math.round(v.currentLevel);
+        const color  = getBatteryColor(pct);
+        const kWhLeft= ((v.target - v.currentLevel) / 100 * v.cap);
+        const minsLeft = v.isComplete ? 0 : Math.ceil(kWhLeft / chargeRates[v.type] * 60);
+        const rangeKm  = Math.round(pct * v.cap * 6);
+
+        return `
+        <div class="vehicle-card">
+          <div class="v-header">
+            <div class="v-header-left">
+              <div class="v-avatar"><i class="ti ti-car" style="color:#22c55e;font-size:20px"></i></div>
+              <div class="v-info">
+                <div class="v-name">${v.name}</div>
+                <div class="v-meta">
+                  <span><i class="ti ti-user" style="font-size:11px;margin-right:3px"></i>${v.owner}</span>
+                  <span><i class="ti ti-calendar" style="font-size:11px;margin-right:3px"></i>${v.date}</span>
+                  <span><i class="ti ti-clock" style="font-size:11px;margin-right:3px"></i>${v.time}</span>
+                </div>
+              </div>
+            </div>
+            <button class="del-btn" onclick="removeVehicle(${v.id})"><i class="ti ti-trash"></i></button>
+          </div>
+
+          <div class="battery-label">
+            <span>Battery level</span>
+            <span id="lbl-${v.id}" style="color:${color};font-weight:600">${pct}% → Target: ${v.target}%</span>
+          </div>
+          <div class="battery-outer">
+            <div class="battery-fill ${v.isCharging?'charging':''}" id="fill-${v.id}"
+                 style="width:${pct}%;background:${color}"></div>
+            <span class="battery-pct" id="pct-${v.id}">${pct}%</span>
+          </div>
+          <div class="charge-info-row">
+            <span id="info-${v.id}" style="color:#aaa">${v.isCharging ? 'Charging…' : 'Not started'}</span>
+            <span style="color:#555">${v.cap} kWh battery</span>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat">
+              <div class="s-label">Energy needed</div>
+              <div class="s-val" style="color:#60a5fa"><span id="kwh-${v.id}">${kWhLeft.toFixed(1)}</span><span class="s-unit"> kWh</span></div>
+            </div>
+            <div class="stat">
+              <div class="s-label">Time remaining</div>
+              <div class="s-val" style="color:#f59e0b"><span id="time-${v.id}">${timeStr(minsLeft)}</span></div>
+            </div>
+            <div class="stat">
+              <div class="s-label">Est. range</div>
+              <div class="s-val" style="color:#22c55e"><span id="range-${v.id}">${rangeKm}</span><span class="s-unit"> km</span></div>
+            </div>
+          </div>
+
+          <div class="charge-type-row">
+            <span class="ct-badge ${badgeClass[v.type]}">
+              <i class="ti ${chargeIcons[v.type]}" style="margin-right:4px"></i>${chargeLabels[v.type]}
+            </span>
+          </div>
+
+          <div class="ctrl-row">
+            <button class="ctrl-btn active" id="sbtn-${v.id}" onclick="startCharging(${v.id})"
+                    style="${v.isCharging||v.isComplete?'display:none':''}">
+              <i class="ti ti-player-play" style="margin-right:6px"></i>Start charging
+            </button>
+            <button class="ctrl-btn stop-btn" id="stbtn-${v.id}" onclick="stopCharging(${v.id})"
+                    style="${v.isCharging?'':'display:none'}">
+              <i class="ti ti-player-pause" style="margin-right:6px"></i>Pause charging
+            </button>
+          </div>
+
+          <div class="status-bar ${v.isComplete?'s-full':v.isCharging?'s-charging':pct<20?'s-low':'s-moderate'}"
+               id="stat-${v.id}">
+            <i class="ti ti-${v.isComplete?'circle-check':v.isCharging?'bolt':pct<20?'alert-circle':'clock'}"
+               style="margin-right:6px"></i>
+            ${v.isComplete?'Charging complete — target reached!':v.isCharging?'Charging in progress…':pct<20?'Critical — charge immediately':'Press Start to begin charging'}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  </script>
+
+</body>
+</html>
